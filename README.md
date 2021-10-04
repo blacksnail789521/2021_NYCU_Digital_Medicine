@@ -1,1 +1,1 @@
-# 2021_NYCU_Digitial_Medicine
+# 2021_NYCU_Digital_Medicine
