@@ -9,6 +9,7 @@ from sklearn.metrics import classification_report
 
 train_dir = './Data/Train_Textual'
 valid_dir = './Data/Test_Intuitive'
+test_dir = './Data/Validation'
 
 def get_dataset(train_dir, valid_dir):
     train_df = pd.DataFrame(columns=('text', 'label'))
@@ -33,19 +34,39 @@ def get_dataset(train_dir, valid_dir):
     
     return train_df, valid_df
 
+def predict_testset(vectorizer, model):
+    test_data_df = pd.DataFrame(columns=('Filename', 'text'))
+    output_csv = pd.DataFrame(columns=('Filename', 'Obesity'))
+
+    cnt = 0
+    for path in os.listdir(test_dir):
+        with open(os.path.join(test_dir, path), 'r') as f:
+            test_data_df.loc[cnt] = [path, f.read()]
+            cnt += 1
+    
+    x_test_tfidf = vectorizer.transform(test_data_df['text'])
+    pred = model.predict(x_test_tfidf)
+
+    output_csv['Filename'] = test_data_df['Filename']
+    output_csv['Obesity'] = pred
+    output_csv = output_csv.sort_values(by=['Filename'])
+    output_csv.to_csv('./output.csv', index=0)
+
 if __name__ == '__main__':
     train_df, valid_df = get_dataset(train_dir, valid_dir)
     vectorizer = TfidfVectorizer(stop_words='english', use_idf=True)
     model = LogisticRegression(solver='liblinear', C=10, penalty='l2')
 
     df = pd.concat([train_df, valid_df])
-    x_train, x_test, y_train, y_test = train_test_split(df['text'], df['label'], test_size=0.33)
+    x_train, x_valid, y_train, y_valid = train_test_split(df['text'], df['label'], test_size=0.33)
 
     x_train_tfidf = vectorizer.fit_transform(x_train)
     model.fit(x_train_tfidf, np.array(y_train, dtype=int))
 
-    x_test_tfidf = vectorizer.transform(x_test)
-    pred = model.predict(x_test_tfidf)
+    x_valid_tfidf = vectorizer.transform(x_valid)
+    pred = model.predict(x_valid_tfidf)
 
-    print(f"accuracy score: {accuracy_score(y_test.tolist(), pred)}")
-    print(f"report:\n{classification_report(y_test.tolist(), pred)}")
+    print(f"accuracy score: {accuracy_score(y_valid.tolist(), pred)}")
+    print(f"report:\n{classification_report(y_valid.tolist(), pred)}")
+
+    predict_testset(vectorizer, model)
