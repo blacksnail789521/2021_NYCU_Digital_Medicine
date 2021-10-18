@@ -1,3 +1,9 @@
+# pip install tensorflow_hub
+# pip install tensorflow_text
+# pip install tf-models-official
+
+#%%
+
 exec("""import sys,os\nexec_path=os.path.abspath(os.path.join(os.path.dirname(__file__),""))\nif exec_path not in sys.path:sys.path.insert(0,exec_path)""")
 import os
 import shutil
@@ -133,7 +139,9 @@ def read_data_as_ds(batch_size = 16, validation_split = 0.2, seed = None, peek =
     
     return train_ds, val_ds, test_ds
 
-train_ds, val_ds, test_ds = read_data_as_ds(validation_split=0)
+# validation_split = 0 # Don't split
+validation_split = 0.2
+train_ds, val_ds, test_ds = read_data_as_ds(validation_split=validation_split)
 
 #%%
 
@@ -158,7 +166,11 @@ def get_bert_models(model_type = 'small_bert', print_url = False):
     
     return bert_preprocess_model, bert_model
 
-bert_preprocess_model, bert_model = get_bert_models()
+model_type = 'small_bert'
+# model_type = 'bert_experts'
+# model_type = 'electra'
+# model_type = 'albert'
+bert_preprocess_model, bert_model = get_bert_models(model_type)
 
 #%%
 
@@ -179,7 +191,7 @@ def build_model(bert_preprocess_model, bert_model, plot_model = True):
     #                                 name='dense_1')(outputs)
     outputs = tf.keras.layers.Dropout(0.5)(outputs)
     outputs = tf.keras.layers.Dense(1, activation=None, \
-                                    kernel_regularizer=tf.keras.regularizers.L2(1), \
+                                    kernel_regularizer=tf.keras.regularizers.L2(0.01), \
                                     name='dense_output')(outputs)
     
     model = tf.keras.Model(inputs, outputs)
@@ -270,7 +282,7 @@ def plot_training_results(history):
     # plt.xticks(epochs)
     
     fig.tight_layout()
-    plt.savefig(os.path.join(output_path, 'plot_result.png'))
+    plt.savefig(os.path.join(output_path, f'{model_type}.png'))
 
 plot_training_results(history)
 
