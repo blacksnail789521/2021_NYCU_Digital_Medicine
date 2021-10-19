@@ -21,6 +21,13 @@
 conda env create -f environment.yml
 ```
 
+Or use docker image from nvidia-ngc (tensorflow)
+```
+cd create_container
+docker-compose build
+. create_model.sh <container_suffix>
+```
+
 ## Usage
 ### Bert
 ```=bash
