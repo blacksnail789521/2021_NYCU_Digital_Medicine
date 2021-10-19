@@ -1,0 +1,18 @@
+version: '3'
+services:
+  jason-tf:
+    build:
+      context: .
+      dockerfile: Dockerfile-tf
+    image: "jason/jason-tf"
+    ipc: host
+    network_mode: bridge
+    environment:
+      LM_LICENSE_FILE:
+    volumes:
+      - ../:/workspace
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - capabilities: [gpu]
