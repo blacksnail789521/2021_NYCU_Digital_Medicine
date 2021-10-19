@@ -191,7 +191,7 @@ def build_model(bert_preprocess_model, bert_model, plot_model = True):
     #                                 name='dense_1')(outputs)
     outputs = tf.keras.layers.Dropout(0.5)(outputs)
     outputs = tf.keras.layers.Dense(1, activation=None, \
-                                    kernel_regularizer=tf.keras.regularizers.L2(0.01), \
+                                    kernel_regularizer=tf.keras.regularizers.L2(1e3), \
                                     name='dense_output')(outputs)
     
     model = tf.keras.Model(inputs, outputs)
@@ -205,7 +205,7 @@ model = build_model(bert_preprocess_model, bert_model)
 
 #%%
 
-def train_model(model, train_ds, val_ds, epochs = 30):
+def train_model(model, train_ds, val_ds, epochs = 100):
 
     # Compile
     loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)
@@ -215,8 +215,8 @@ def train_model(model, train_ds, val_ds, epochs = 30):
     num_train_steps = steps_per_epoch * epochs
     num_warmup_steps = int(0.1*num_train_steps)
     
-    init_lr = 3e-5
-    # init_lr = 1e-4
+    # init_lr = 3e-5
+    init_lr = 1e-4
     optimizer = optimization.create_optimizer(init_lr=init_lr,
                                               num_train_steps=num_train_steps,
                                               num_warmup_steps=num_warmup_steps,

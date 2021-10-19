@@ -1,0 +1,14 @@
+FROM nvcr.io/nvidia/tensorflow:21.09-tf2-py3
+
+# install required packages
+RUN apt-get update \
+    && apt-get install -y tcsh libxml2 libelf1 tmux nvtop graphviz \
+    && apt-get install -y git less net-tools vim procps \
+    && pip install -U pip setuptools wheel \
+    && pip install tqdm questionary matplotlib tslearn pandas loguru colorama \
+    && pip install pydot \
+    && pip install better_exceptions \
+    && pip install tensorflow_hub tensorflow_text tf-models-official \
+    && export BETTER_EXCEPTIONS=1
+
+WORKDIR /workspace
