@@ -3,61 +3,66 @@ import os
 import pandas as pd
 import numpy as np
 import pickle
+import torch
 from torch.utils.data import Dataset, DataLoader
+import torchvision.transforms as transforms
 
 Data_dir = './Data/'
 
 def readout_dataset(dir, label_path):
-    train_set, valid_set = {}, {}
+    train_path, valid_path = {}, {}
     train_df = pd.read_csv(label_path)
-    valid_df = pd.DataFrame(columns=['FileID'])
+    valid_df = pd.DataFrame(columns=['FileID', 'path'])
     for root, _, files in os.walk(os.path.join(dir, 'train/')):
         for file in files:
-            with open(os.path.join(root, file), 'rb') as f:
-                train_set[file.split('.dcm')[0]] = dcmread(f).pixel_array
+            train_path[file.split('.dcm')[0]] = os.path.join(root, file)
     for root, _, files in os.walk(os.path.join(dir, 'valid/')):
         for file in files:
-            with open(os.path.join(root, file), 'rb') as f:
-                valid_set[file.split('.dcm')[0]] = dcmread(f).pixel_array
+            valid_path[file.split('.dcm')[0]] = os.path.join(root, file)
     
     train_df['label'] = ((train_df.iloc[:, 1:] == 1).idxmax(1)).astype('category').cat.codes
-    y = [train_set[x] for x in train_df['FileID'].tolist()]
-    with open(Data_dir + 'train_data.pk', 'wb') as f:
-        pickle.dump(y, f)
+    y = [train_path[x] for x in train_df['FileID'].tolist()]
+    train_df.insert(1, "path", y)
 
     cnt = 0
-    y = []
-    for x in valid_set:
-        valid_df.loc[cnt] = [x]
-        y.append(valid_set[x])
+    for x in valid_path:
+        valid_df.loc[cnt] = [x, valid_path[x]]
         cnt += 1
-    with open(Data_dir + 'valid_data.pk', 'wb') as f:
-        pickle.dump(y, f)
     
     train_df.to_csv(Data_dir + 'train_label.csv', index=False)
     valid_df.to_csv(Data_dir + 'valid_label.csv', index=False)
 
-def get_dataset(train_pk, valid_pk):
-    train_label = pd.read_csv(Data_dir + 'train_label.csv')
-    valid_label = pd.read_csv(Data_dir + 'valid_label.csv')
-    with open(train_pk, 'rb') as f:
-        train_data = pickle.load(f)
-    with open(valid_pk, 'rb') as f:
-        valid_data = pickle.load(f)
-    return train_label, train_data, valid_label, valid_data
-
 class Covid_Dataset(Dataset):
-    def __init__(self, label, data):
+    def __init__(self, label, mode):
         self.label = label
-        self.data = data
+        self.preprocess = transforms.Compose([
+            transforms.Resize(256), 
+            transforms.CenterCrop(256),
+        ])
+        self.transform = transforms.Compose([
+            transforms.RandomHorizontalFlip(), 
+            transforms.RandomVerticalFlip(), 
+            transforms.ToTensor()
+        ])
+        self.mode = mode
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, index):
-        return self.data[index], self.label[index]
+        row = self.label.iloc[index]
+        with open(row['path'], 'rb') as f:
+            img = dcmread(f).pixel_array
+        img = np.array(img, dtype=np.float32)[np.newaxis]
+        img = torch.from_numpy(img)
+        img = self.preprocess(img)
+        if self.mode == 'train':
+            img = self.transform(img)
+        else:
+            img = transforms.ToTensor()(img)
+        
+        return img, row['label']
 
 if __name__ == '__main__':
     readout_dataset(Data_dir + 'data', Data_dir + 'label.csv')
-    train_label, train_data, valid_label, valid_data = get_dataset(Data_dir + 'train_data.pk', Data_dir + 'valid_data.pk')
-    print(train_data[0])
+    print(pd.read_csv(Data_dir + 'train_label.csv'))
