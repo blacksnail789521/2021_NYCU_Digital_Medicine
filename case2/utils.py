@@ -69,10 +69,12 @@ class Covid_Dataset(Dataset):
         img = self.preprocess(img)
         if self.mode == 'train':
             img = self.transform(img)
+            return img, row['label']
         else:
             img = transforms.ToTensor()(img)
+            return img, row['FileID']
         
-        return img, row['label']
+        
 
 if __name__ == '__main__':
     readout_dataset(Data_dir + 'data', Data_dir + 'label.csv')
