@@ -11,28 +11,56 @@ import torchvision.transforms as transforms
 
 Data_dir = './Data/'
 
-def preporcess(img):
+def preprocess(img):
     img = img.astype(np.float32)
     img = (img / img.max()) * 255
-    return img
+    img = img.astype(np.uint8)
+    clahe = cv2.createCLAHE(clipLimit = 20.0, tileGridSize = (8,8))
+    return clahe.apply(img)
+
+    # # histogram equalization
+    # intensity_count = [0] * 256        
+    # height, width = img.shape[:2]
+    # N = height * width                  
+
+    # high_contrast = np.zeros(img.shape) 
+
+    # for i in range(0, height):
+    #     for j in range(0, width):
+    #         intensity_count[img[i][j]] += 1
+
+    # L = 256
+
+    # intensity_count, total_values_used = np.histogram(img.flatten(), L, [0, L])      
+    # pdf_list = np.ceil(intensity_count*(L-1)/img.size)
+    # cdf_list = pdf_list.cumsum()
+
+    # for y in range(0, height):
+    #     for x in range(0, width): 
+    #         high_contrast[y,x] = cdf_list[img[y,x]]
+
+    # return img
 
 def readout_dataset(dir, label_path):
     train_path, valid_path = {}, {}
     train_df = pd.read_csv(label_path)
     valid_df = pd.DataFrame(columns=['FileID', 'path'])
-    for root, _, files in tqdm(os.walk(os.path.join(dir, 'train/'))):
+    for root, _, files in os.walk(os.path.join(dir, 'train/')):
         for file in files:
-            with open(os.path.join(root, file), 'rb') as f:
-                ds = dcmread(f).pixel_array
-            ds = preporcess(ds)
-            cv2.imwrite(os.path.join(root, file).replace('dcm', 'png'), ds)
-            train_path[file.split('.dcm')[0]] = os.path.join(root, file).replace('dcm', 'png')
-    for root, _, files in tqdm(os.walk(os.path.join(dir, 'valid/'))):
+            if file.endswith('.dcm'):
+                with open(os.path.join(root, file), 'rb') as f:
+                    ds = dcmread(f).pixel_array
+                ds = preprocess(ds)
+                cv2.imwrite(os.path.join(root, file).replace('.dcm', '.he.png'), ds)
+                train_path[file.split('.dcm')[0]] = os.path.join(root, file).replace('.dcm', '.he.png')
+    for root, _, files in os.walk(os.path.join(dir, 'valid/')):
         for file in files:
-            with open(os.path.join(root, file), 'rb') as f:
-                ds = dcmread(f).pixel_array
-            cv2.imwrite(os.path.join(root, file).replace('dcm', 'png'), ds)
-            valid_path[file.split('.dcm')[0]] = os.path.join(root, file).replace('dcm', 'png')
+            if file.endswith('.dcm'):
+                with open(os.path.join(root, file), 'rb') as f:
+                    ds = dcmread(f).pixel_array
+                ds = preprocess(ds)
+                cv2.imwrite(os.path.join(root, file).replace('.dcm', '.he.png'), ds)
+                valid_path[file.split('.dcm')[0]] = os.path.join(root, file).replace('.dcm', '.he.png')
     
     train_df['label'] = ((train_df.iloc[:, 1:] == 1).idxmax(1)).astype('category').cat.codes
     y = [train_path[x] for x in train_df['FileID'].tolist()]
@@ -50,10 +78,11 @@ class Covid_Dataset(Dataset):
     def __init__(self, label, mode):
         self.label = label
         self.preprocess = transforms.Compose([
-            transforms.Resize(256), 
-            transforms.CenterCrop(256),
+            transforms.Resize(224), 
+            transforms.CenterCrop(224),
         ])
         self.transform = transforms.Compose([
+            transforms.RandomRotation(30),
             transforms.RandomHorizontalFlip(), 
             transforms.RandomVerticalFlip(), 
             transforms.ToTensor()
@@ -74,8 +103,7 @@ class Covid_Dataset(Dataset):
             img = transforms.ToTensor()(img)
             return img, row['FileID']
         
-        
-
 if __name__ == '__main__':
     readout_dataset(Data_dir + 'data', Data_dir + 'label.csv')
-    print(pd.read_csv(Data_dir + 'train_label.csv'))
+    df = pd.read_csv(Data_dir + 'train_label.csv')
+    print(df.groupby('label').count())
