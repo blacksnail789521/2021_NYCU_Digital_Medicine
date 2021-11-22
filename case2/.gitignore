@@ -1,0 +1,6 @@
+__pycache__/
+raw_data/
+__data__/
+case2_test.py
+*.csv
+*.png
