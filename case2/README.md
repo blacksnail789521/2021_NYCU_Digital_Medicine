@@ -45,3 +45,8 @@ python semantic_segmentation.py
 python EEGNet.py
 ```
 
+### CLAHE preprocessing and readout the dataset
+```bash
+python3 utils.py
+```
+
