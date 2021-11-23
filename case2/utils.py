@@ -2,6 +2,7 @@ from pydicom import dcmread
 import os
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
 import cv2
 from PIL import Image
 from tqdm import tqdm
@@ -18,33 +19,21 @@ def preprocess(img):
     clahe = cv2.createCLAHE(clipLimit = 20.0, tileGridSize = (8,8))
     return clahe.apply(img)
 
-    # # histogram equalization
-    # intensity_count = [0] * 256        
-    # height, width = img.shape[:2]
-    # N = height * width                  
-
-    # high_contrast = np.zeros(img.shape) 
-
-    # for i in range(0, height):
-    #     for j in range(0, width):
-    #         intensity_count[img[i][j]] += 1
-
-    # L = 256
-
-    # intensity_count, total_values_used = np.histogram(img.flatten(), L, [0, L])      
-    # pdf_list = np.ceil(intensity_count*(L-1)/img.size)
-    # cdf_list = pdf_list.cumsum()
-
-    # for y in range(0, height):
-    #     for x in range(0, width): 
-    #         high_contrast[y,x] = cdf_list[img[y,x]]
-
-    # return img
+def split_train_valid(train_df, valid_size=0.2):
+    df0 = train_df[train_df['label'] == 0]
+    df1 = train_df[train_df['label'] == 1]
+    df2 = train_df[train_df['label'] == 2]
+    df0_train, df0_valid = train_test_split(df0, test_size=valid_size)
+    df1_train, df1_valid = train_test_split(df1, test_size=valid_size)
+    df2_train, df2_valid = train_test_split(df2, test_size=valid_size)
+    train_df = pd.concat([df0_train, df1_train, df2_train])
+    valid_df = pd.concat([df0_valid, df1_valid, df2_valid])
+    return train_df, valid_df
 
 def readout_dataset(dir, label_path):
-    train_path, valid_path = {}, {}
+    train_path, test_path = {}, {}
     train_df = pd.read_csv(label_path)
-    valid_df = pd.DataFrame(columns=['FileID', 'path'])
+    test_df = pd.DataFrame(columns=['FileID', 'path'])
     for root, _, files in os.walk(os.path.join(dir, 'train/')):
         for file in files:
             if file.endswith('.dcm'):
@@ -60,19 +49,21 @@ def readout_dataset(dir, label_path):
                     ds = dcmread(f).pixel_array
                 ds = preprocess(ds)
                 cv2.imwrite(os.path.join(root, file).replace('.dcm', '.he.png'), ds)
-                valid_path[file.split('.dcm')[0]] = os.path.join(root, file).replace('.dcm', '.he.png')
+                test_path[file.split('.dcm')[0]] = os.path.join(root, file).replace('.dcm', '.he.png')
     
     train_df['label'] = ((train_df.iloc[:, 1:] == 1).idxmax(1)).astype('category').cat.codes
     y = [train_path[x] for x in train_df['FileID'].tolist()]
     train_df.insert(1, "path", y)
 
     cnt = 0
-    for x in valid_path:
-        valid_df.loc[cnt] = [x, valid_path[x]]
+    for x in test_path:
+        test_df.loc[cnt] = [x, test_path[x]]
         cnt += 1
     
+    # train_df, valid_df = split_train_valid(train_df, valid_size=0.25)
     train_df.to_csv(Data_dir + 'train_label.csv', index=False)
-    valid_df.to_csv(Data_dir + 'valid_label.csv', index=False)
+    # valid_df.to_csv(Data_dir + 'valid_label.csv', index=False)
+    test_df.to_csv(Data_dir + 'test_label.csv', index=False)
 
 class Covid_Dataset(Dataset):
     def __init__(self, label, mode):
@@ -84,7 +75,7 @@ class Covid_Dataset(Dataset):
         self.transform = transforms.Compose([
             transforms.RandomRotation(30),
             transforms.RandomHorizontalFlip(), 
-            transforms.RandomVerticalFlip(), 
+            # transforms.RandomVerticalFlip(), 
             transforms.ToTensor()
         ])
         self.mode = mode
@@ -96,7 +87,7 @@ class Covid_Dataset(Dataset):
         row = self.label.iloc[index]
         img = Image.open(row['path'])
         img = self.preprocess(img)
-        if self.mode == 'train':
+        if self.mode != 'test':
             img = self.transform(img)
             return img, row['label']
         else:
