@@ -7,23 +7,23 @@
       -  400 Typical Pneumonia
       -  400 Atypical Pneumonia
     -  Validation set
-      -  50 Non-Pneumonia
-      -  50 Typical Pneumonia
-      -  50 Atypical Pneumonia
+        -  50 Non-Pneumonia
+        -  50 Typical Pneumonia
+        -  50 Atypical Pneumonia
 -  Evaluation matrix
     -  F1-score
 -  Method
     -  Preprocessing
-      -  CLAHE
-      -  Semantic segmentation
-      -  Data augmentation
+        -  CLAHE
+        -  Semantic segmentation
+        -  Data augmentation
     -  Model
-      -  ResNet
-      -  EEGNet/DeepConvNet
-      -  DenseNet
-      -  EfficientNet
+        -  ResNet
+        -  EEGNet/DeepConvNet
+        -  DenseNet
+        -  EfficientNet
     -  Ensemble
-      -  Soft voting
+        -  Soft voting
 
 ## Prepare
 ### Install Environment
